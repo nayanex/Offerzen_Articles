@@ -13,7 +13,7 @@ It can be pretty daunting to have to use repetitive SQL commands to search for s
 
 SQLAlchemy is a library used to interact with a wide variety of databases such as Postgres, MySQL, SQLite, Oracle, and many others. It enables you to create data models and queries in a manner that feels like normal Python classes and statements. It's considered by many the main way of working with relational databases in Python. 
 
-[The top reason to use SQLAlchemy is to abstract your code away from the underlying database and its associated SQL peculiarities. SQLAlchemy leverages powerful common statements and types to ensure its SQL statements are crafted efficiently and properly for each database type and vendor without you having to think about it. This makes it easy to migrate logic from Oracle to PostgreSQL or from an application database to a data warehouse. It also helps ensure that database input is sanitized and properly escaped prior to being submitted to the database. This prevents common issues like SQL injection attacks.][1]
+(The top reason to use SQLAlchemy is to abstract your code away from the underlying database and its associated SQL peculiarities. SQLAlchemy leverages powerful common statements and types to ensure its SQL statements are crafted efficiently and properly for each database type and vendor without you having to think about it. This makes it easy to migrate logic from Oracle to PostgreSQL or from an application database to a data warehouse. It also helps ensure that database input is sanitized and properly escaped prior to being submitted to the database. This prevents common issues like SQL injection attacks.)[1]
 
 I hope you find it interesting so far. Now let's get our hands a bit dirty.
 
@@ -65,12 +65,12 @@ If you would like to install them individually, just do:
 
 ## STEP 2: Installing Database Drivers
 
-[By default, SQLAlchemy will support SQLite3 with no additional drivers; however, an additional database driver that uses the standard Python DBAPI (PEP-249) specification is needed to connect to other databases. These DBAPIs provide the basis for the dialect each database server speaks and often enable the unique features seen in different database servers and versions.][1]
+(By default, SQLAlchemy will support SQLite3 with no additional drivers; however, an additional database driver that uses the standard Python DBAPI (PEP-249) specification is needed to connect to other databases. These DBAPIs provide the basis for the dialect each database server speaks and often enable the unique features seen in different database servers and versions.)[1]
 
 [cx_Oracle](https://docs.sqlalchemy.org/en/14/dialects/oracle.html#module-sqlalchemy.dialects.oracle.cx_oracle) is one dialect(DBAPI) option available which adds support for the Oracle database.
-All you have to do is go to the cx_Oracle official webpage (https://oracle.github.io/python-cx_Oracle/) download and install the proper driver according to your operational system. 
+All you have to do is go to the cx_Oracle [official webpage](https://oracle.github.io/python-cx_Oracle/) download and install the proper driver according to your operational system. 
 
-## STEP3: Test  your database connection credentials before start the coding
+## STEP3: Test Your Database Connection Credentials Before Start Coding
 
 Make sure you have all the necessary information to connect to your database. A connection string provides information about:
 
@@ -103,9 +103,9 @@ export DB_PORT=<your_db_port>
 
 Usually this file is placed in the the root folder of our project.
 
-## STEP 5: CREATING A CONFIG FILE
+## STEP 5: Reading Configuration Information from Environment Variable
 
-Now, let's create a `config.py` file which will read the database credentials
+Now let's create a `config.py` file to read our database credentials. For this we are going to use a Python library called [`python-dotenv`](https://pypi.org/project/python-dotenv/), which we already added in our `requirements.txt` file. `python-dotenv` reads the key-value pair from `.env` file and adds them to the environment variable.
 
 *src/config.py*
 ```python
@@ -132,40 +132,28 @@ def get_oracle_db_uri() -> str:
    return f"oracle+cx_oracle://{user}:{password}@{host}:{port}/{service_name}"
 ```
 
-
 ## STEP 6: Connecting to the Database
 
-Now that we have SQLAlchemy and a DBAPI installed, let’s actually build an engine to connect to a database.
+Now that we have our Python dependencies and DBAPI installed, let’s actually build an engine to connect to a database.
 
-The SQLAlchemy engine creates an interface to the database to execute SQL statements. This enables our Python code not to worry about the differences between databases or DBAPIs.
+The [SQLAlchemy engine](https://docs.sqlalchemy.org/en/14/core/engines.html) creates an interface to the database to execute SQL statements. This enables our Python code not to worry about the differences between databases or DBAPIs. Creating an engine is just a matter of issuing a single call:
 
+```python
+from sqlalchemy import create_engine
 
+create_engine(get_oracle_db_uri(), max_identifier_length=128, pool_timeout=30
+```
 
-
-CREATING YOUR DATA ACCESS LAYER
-Create your Unit of Work classes
-Create you query classes
-Tricks for maintainability and reusability
-
-
-
-## The Unit of Work Design Pattern?
+### The Unit of Work Design Pattern
 
 You can change the database with each change to your object model, but this can lead to lots of very small database calls, adding latency to your system, mainly if a lot of communication happens across the layers of your infrastructure.
 
-While performing CRUD operations you can use the Unit of Work to check for inconsistencies by verifying that none of the objects changed on the database during the business transaction. When it comes time to commit, it figures out everything that needs to be done to alter the database as a result of your work. It opens a transaction, does any concurrency checking and writes changes out to the database. 
+(While performing CRUD operations you can use the Unit of Work (UoW, which we pronounce “you-wow”)to check for inconsistencies by verifying that none of the objects changed on the database during the business transaction. When it comes time to commit, it figures out everything that needs to be done to alter the database as a result of your work. It opens a transaction, does any concurrency checking and writes changes out to the database.)[2] 
 
-The Unit of Work(UoW, which we pronounce “you-wow”) allows us to decouple our service layer from the data layer. 
-
-
-[The obvious things that cause you to deal with the database are changes: new object created and existing ones updated or deleted. Unit of Work is an object that keeps track of these things. As soon as you start doing something that may affect a database, you create a Unit of Work to keep track of the changes. Every time you create, change, or delete an object you tell the Unit of Work. You can also let it know about objects you’ve read so that it can check for inconsistent reads by verifying that none of the objects changed on the database during the business transaction.][2]
-
-The Unit of Work (UoW) pattern is our abstraction over the idea of atomic operations . 
+In addition, the Unit of Work allows us to decouple our service layer from the data layer. If you would like to get a deeper dive into The Unit of Work design pattern applied to a Python project, I recommend you to read the chapter 6 of the book (Enterprise Architecture Patterns With Python)[https://www.cosmicpython.com/book/chapter_06_uow.html] written by (Harry Percival)[https://twitter.com/hjwp]. The code bellow is an adaptation of what he presented in his book.
 
 
-Here’s how the service layer will look when we’re finished: 
-
-*unit_of_work.py*
+*data_access_layer/unit_of_work.py*
 ```python
 import abc
 
@@ -222,14 +210,61 @@ class SqlAlchemyUnitOfWork(AbstractUnitOfWork):
 
 ```
 
-When we are done we commit or roll back the work using UoW. It acts as a single entrypoint to our persistence storage and it keeps track of what objects were loaded and of the latest state.
+
+(It acts as a single entry point to our persistence storage and it keeps track of what objects were loaded.
 
 This gives us three useful things: 
 
 * A stable snapshot of the database to work with, so the objects we use aren’t changing halfway through an operation
 * A way to persist all of our changes at once, so if something goes wrong, we don’t end up in an inconsistent state
-* A simple API to our persistence concerns and a handy place to get a repository
+* A simple API to our persistence concerns and a handy place to get a repository)[3]
 
+
+## Creating Your Query Classes
+
+*data_access_layer/base_queries.py*
+```python
+from src.automation.data_access_layer import unit_of_work
+from src.automation.data_transfer_object.controls import QueryResult
+
+
+class BaseQueries:
+    def __init__(self, uow: unit_of_work.SqlAlchemyUnitOfWork):
+        self.uow = uow
+
+    def _run_query(self, query_cmd: str) -> QueryResult:
+        with self.uow:
+            data = list(map(dict, self.uow.session.execute(query_cmd)))
+            return QueryResult(data, query_cmd)
+
+    def get_calc_request_ids(self, month: int, year: int) -> QueryResult:
+        query = """
+SELECT R.ID 
+FROM
+    X_OWNER.CALCULATION_REQUESTS R,
+    X_OWNER.CALCULATION_INPUTS I
+WHERE
+    I.DATA_DICTIONARY_ID = (SELECT ID FROM X_OWNER.DATA_DICTIONARY WHERE CODE = 'SOURCE') AND
+    R.M_IMPORT_DATASET_ID = I.IMPORT_DATASET_ID AND
+    TO_CHAR(R.CREATION_TIMESTAMP, 'mm-YYYY') =  '{month}-{year}' AND
+    R.REP_STATUS = 'Y' AND 
+    R.DESCRIPTION IS NULL AND
+    R.STATUS NOT IN ('FAILED')
+        """.format(
+            month=str(month).zfill(2), year=year
+        )
+        results = self._run_query(query)
+        results.data = [str(r["id"]) for r in results.data]
+        return results
+```
+
+## Building Up Your Services
+
+
+## The Main Application
+
+
+## Tricks for maintainability and reusability
 
 ## General Architecture of the System
 
@@ -237,19 +272,21 @@ The unit of work is going to be initialized in the main application, which invok
 
 ![General Architecture of the System](images/architecture_flowchart.jpg "General Architecture of the System")
 
+## Troubleshooting
+
 ## Resources
 
-[1]: Copeland, R. (2008). Essential SQLAlchemy. Sebastopol, CA: O’Reilly Media. 
+[1] Copeland, R. (2008). Essential SQLAlchemy. Sebastopol, CA: O’Reilly Media. 
 
-[2]: Fowler, M. (2002). Patterns of Enterprise Application Architecture. Boston, MA: Addison-Wesley Educational. 
+[2] Fowler, M. (2002). Patterns of Enterprise Application Architecture. Boston, MA: Addison-Wesley Educational. 
 
-[3]: PERCIVAL, HARRY. ENTERPRISE ARCHITECTURE PATTERNS WITH PYTHON: O'REILLY MEDIA, 2020. 
+[3] PERCIVAL, HARRY. ENTERPRISE ARCHITECTURE PATTERNS WITH PYTHON: O'REILLY MEDIA, 2020. 
 
-[4]: https://docs.sqlalchemy.org/en/14/dialects/oracle.html 
+[4] https://docs.sqlalchemy.org/en/14/dialects/oracle.html 
 
-[5]: https://oracle.github.io/python-cx_Oracle/
+[5] https://oracle.github.io/python-cx_Oracle/
 
-[6]: https://docs.sqlalchemy.org/en/14/dialects/oracle.html
+[6] https://docs.sqlalchemy.org/en/14/dialects/oracle.html
 
 [7]:[Flask Tutorial in Visual Studio Code](https://code.visualstudio.com/docs/python/tutorial-flask)
 
