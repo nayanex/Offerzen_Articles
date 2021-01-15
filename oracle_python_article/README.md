@@ -240,12 +240,18 @@ The unit of work is going to be initialized in the main application, which invok
 ## Resources
 
 [1]: Copeland, R. (2008). Essential SQLAlchemy. Sebastopol, CA: O’Reilly Media. 
+
 [2]: Fowler, M. (2002). Patterns of Enterprise Application Architecture. Boston, MA: Addison-Wesley Educational. 
+
 [3]: PERCIVAL, HARRY. ENTERPRISE ARCHITECTURE PATTERNS WITH PYTHON: O'REILLY MEDIA, 2020. 
+
 [4]: https://docs.sqlalchemy.org/en/14/dialects/oracle.html 
+
 [5]: https://oracle.github.io/python-cx_Oracle/
+
 [6]: https://docs.sqlalchemy.org/en/14/dialects/oracle.html
-[Flask Tutorial in Visual Studio Code](https://code.visualstudio.com/docs/python/tutorial-flask)
+
+[7]:[Flask Tutorial in Visual Studio Code](https://code.visualstudio.com/docs/python/tutorial-flask)
 
 
 
