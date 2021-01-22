@@ -5,7 +5,7 @@ In this tutorial style article we are going to provide you with some steps to co
 
 ## Introduction 
 
-Oracle is one of the most popular databases out there, it's used by companies like JPMorgan Chase, IBM, ABN Amro, Wells Fargo and so on. Considering this, the are good chances that one day you might bump into it in your ephemeral life as a software developer. 
+Oracle is one of the most popular databases out there, it's used by companies like JPMorgan Chase, IBM, ABN Amro, Wells Fargo and so on. Considering this, there are good chances that one day you might bump into it in your ephemeral lifetime as a software developer. 
 
 It can be pretty daunting to have to use repetitive SQL commands to search for specific information in databases, right? For simple and quick tasks it's fine to use a software like Oracle SQL Developer to perform your queries, but if you are working on a specific application with more complicated business rules, then you might want to condense those repetitive SQL commands in a method, for example. If you are writing an application in Python which might need to query an Oracle database, follow me through the next steps to check out my approach to this.
 
@@ -86,7 +86,7 @@ If you have the Oracle SQL Developer software installed in your machine you can 
 
 If after that you are able to successfully connect to the database and see the schemas and tables you are interested in, then you are good to go to the next steps.
 
-## STEP4: Creating a ".env" File to Store Information About Your Database Connection
+## STEP 4: Creating a ".env" File to Store Information About Your Database Connection
 
 It's a good practice to create a `.env` file to store sensitive information about your project. This way, your application will become less vulnerable to malicious attacks. Each developer involved in the creation of the project should create their own `.env` file in which they will place their credentials to the database, see template below.
 
@@ -132,6 +132,12 @@ def get_oracle_db_uri() -> str:
    return f"oracle+cx_oracle://{user}:{password}@{host}:{port}/{service_name}"
 ```
 
+Note the connection string format returned in the method above:
+
+```bash
+oracle+cx_oracle://user:pass@host:port/dbname[?key=value&key=value...]
+```
+
 ## STEP 6: Connecting to the Database
 
 Now that we have our Python dependencies and DBAPI installed, let’s actually build an engine to connect to a database.
@@ -148,9 +154,9 @@ create_engine(get_oracle_db_uri(), max_identifier_length=128, pool_timeout=30
 
 You can change the database with each change to your object model, but this can lead to lots of very small database calls, adding latency to your system, mainly if a lot of communication happens across the layers of your infrastructure.
 
-(While performing CRUD operations you can use the Unit of Work (UoW, which we pronounce “you-wow”)to check for inconsistencies by verifying that none of the objects changed on the database during the business transaction. When it comes time to commit, it figures out everything that needs to be done to alter the database as a result of your work. It opens a transaction, does any concurrency checking and writes changes out to the database.)[2] 
+(While performing CRUD operations you can use the Unit of Work (UoW, which we pronounce “you-wow”) to check for inconsistencies by verifying that none of the objects changed on the database during the business transaction. When it comes time to commit, it figures out everything that needs to be done to alter the database as a result of your work. It opens a transaction, does any concurrency checking and writes changes out to the database.)[2] 
 
-In addition, the Unit of Work allows us to decouple our service layer from the data layer. If you would like to get a deeper dive into The Unit of Work design pattern applied to a Python project, I recommend you to read the chapter 6 of the book (Enterprise Architecture Patterns With Python)[https://www.cosmicpython.com/book/chapter_06_uow.html] written by (Harry Percival)[https://twitter.com/hjwp]. The code bellow is an adaptation of what he presented in his book.
+In addition, the Unit of Work allows us to decouple our service layer from the data layer. If you would like to get a deeper dive into The Unit of Work design pattern applied to a Python project, I recommend you to read the chapter 6 of the book [Enterprise Architecture Patterns With Python](https://www.cosmicpython.com/book/chapter_06_uow.html) written by [Harry Percival](https://twitter.com/hjwp). The code bellow is an adaptation of what he presented in his book.
 
 
 *data_access_layer/unit_of_work.py*
@@ -211,18 +217,55 @@ class SqlAlchemyUnitOfWork(AbstractUnitOfWork):
 ```
 
 
-(It acts as a single entry point to our persistence storage and it keeps track of what objects were loaded.
-
-This gives us three useful things: 
+The UoW acts as a single entry point to our persistence storage and keeps track of what objects were loaded. This gives us three useful things: 
 
 * A stable snapshot of the database to work with, so the objects we use aren’t changing halfway through an operation
 * A way to persist all of our changes at once, so if something goes wrong, we don’t end up in an inconsistent state
-* A simple API to our persistence concerns and a handy place to get a repository)[3]
+* A simple API to our persistence concerns and a handy place to get a repository[3]
 
 
 ## Creating Your Query Classes
 
-*data_access_layer/base_queries.py*
+Now that we set up an engine to communicate with the database we are ready to perform our query commands.
+
+Let's suppose you work for a financial institution and you are given a task to create Financial Audit Reports for a certain quarter of the year or month. These reports would provide detailed information about macroeconomic variables, mortgage rates and so on.
+
+This is an important task because in the end these reports are going to be evaluated by an Auditing company, like EY or PwC, in order to make sure that the financial records are a fair and accurate representation of the transactions your company claim to represent.
+
+The business analysts in your team usually work on these reports, many of them are already savvy about SQL commands and perform them using the Oracle SQL Developer software. But they don't want spend infinite boring hours performing repetitive queries and populating the results on excel sheets, so they ask your help to automate this process. After all, we are in the 21st century already and life is too short to repeat themselves every month or quarter. Plus, sometimes little mistakes are made here and there... damn humans. 
+
+So, basically they would provide you with the queries they usually perform to gather the report data and you would adapt them according to the variant parameters, for example, year, month, quarter. In the beginning you are going to need some meetings to understand the business logic behind all of it, but once you get it, it's piece of cake. 
+
+*src/automation/data_transfer_object/controls.py*
+```python
+from dataclasses import dataclass
+from typing import Generic, TypeVar
+
+
+RequiredData = TypeVar("RequiredData")
+
+
+@dataclass
+class QueryResult:
+    data: list
+    query_cmd: str
+
+
+@dataclass
+class GeneralData(Generic[RequiredData]):
+    source_per_request: dict
+    calculation_requests: QueryResult
+
+
+@dataclass
+class CalcGeneralData(GeneralData[RequiredData]):
+    economic_scenario_projections: list
+    mortgage_rates: QueryResult
+```
+
+
+
+*src/automation/data_access_layer/base_queries.py*
 ```python
 from src.automation.data_access_layer import unit_of_work
 from src.automation.data_transfer_object.controls import QueryResult
@@ -244,10 +287,8 @@ FROM
     X_OWNER.CALCULATION_REQUESTS R,
     X_OWNER.CALCULATION_INPUTS I
 WHERE
-    I.DATA_DICTIONARY_ID = (SELECT ID FROM X_OWNER.DATA_DICTIONARY WHERE CODE = 'SOURCE') AND
     R.M_IMPORT_DATASET_ID = I.IMPORT_DATASET_ID AND
     TO_CHAR(R.CREATION_TIMESTAMP, 'mm-YYYY') =  '{month}-{year}' AND
-    R.REP_STATUS = 'Y' AND 
     R.DESCRIPTION IS NULL AND
     R.STATUS NOT IN ('FAILED')
         """.format(
@@ -262,6 +303,30 @@ WHERE
 
 
 ## The Main Application
+
+*src/main.py*
+
+```python
+from datetime import datetime
+
+from src.automation.data_access_layer.unit_of_work import SqlAlchemyUnitOfWork
+from reports.calculation import CalculationReport
+
+
+class ReportFramework:
+    def __init__(self):
+        current_date = datetime.now()
+        self.month = current_date.month
+        self.year = current_date.year
+        self.db = SqlAlchemyUnitOfWork()
+
+    def run(self):
+        CalculationReport(self.month, self.year, self.db).generate()
+
+if __name__ == "__main__":
+    report = ReportFramework()
+    report.run()
+```
 
 
 ## Tricks for maintainability and reusability
