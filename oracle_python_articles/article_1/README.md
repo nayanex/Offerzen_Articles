@@ -308,7 +308,7 @@ if __name__ == "__main__":
 
 The unit of work is going to be initialized in the main application, which invokes the services, which collaborates with the UoW.
 
-![General Architecture of the System](images/architecture_flowchart.jpg "General Architecture of the System")
+![General Architecture of the System](../images/architecture_flowchart.jpg "General Architecture of the System")
 
 
 ## Resources
