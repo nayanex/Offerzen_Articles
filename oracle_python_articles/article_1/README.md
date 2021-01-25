@@ -1,6 +1,6 @@
 # Pulling Data Out of Oracle database with Python using SQLAlchemy and Unit of Work Design Pattern
 
-In this tutorial style article we are going to provide you with some steps to connect to an Oracle database in a Python application by using SQLAlchemy ORM (Object relational mapping) and the Unit of Work Design Pattern. By the end of it you will be able to perform queries using raw SQL commands along with some Python features such as encapsulating your queries in classes and methods according to business rules domains and making your code more flexible and reusable by concatenating python variables in your queries commands using the format method.
+In this tutorial style article we are going to provide you with some steps to connect to an Oracle database in a Python application by using SQLAlchemy ORM (Object relational mapping) and the Unit of Work Design Pattern. By the end of it you will be able to perform queries using raw SQL commands.
 
 
 ## Introduction 
@@ -63,14 +63,14 @@ If you would like to install them individually, just do:
 
 `pip install <somepackage>`
 
-## STEP 2: Installing Database Drivers
+## Step 2: Installing Database Drivers
 
 (By default, SQLAlchemy will support SQLite3 with no additional drivers; however, an additional database driver that uses the standard Python DBAPI (PEP-249) specification is needed to connect to other databases. These DBAPIs provide the basis for the dialect each database server speaks and often enable the unique features seen in different database servers and versions.)[1]
 
 [cx_Oracle](https://docs.sqlalchemy.org/en/14/dialects/oracle.html#module-sqlalchemy.dialects.oracle.cx_oracle) is one dialect(DBAPI) option available which adds support for the Oracle database.
 All you have to do is go to the cx_Oracle [official webpage](https://oracle.github.io/python-cx_Oracle/) download and install the proper driver according to your operational system. 
 
-## STEP3: Test Your Database Connection Credentials Before Start Coding
+## Step 3: Test Your Database Connection Credentials Before Start Coding
 
 Make sure you have all the necessary information to connect to your database. A connection string provides information about:
 
@@ -86,7 +86,7 @@ If you have the Oracle SQL Developer software installed in your machine you can 
 
 If after that you are able to successfully connect to the database and see the schemas and tables you are interested in, then you are good to go to the next steps.
 
-## STEP 4: Creating a ".env" File to Store Information About Your Database Connection
+## Step 4: Creating a ".env" File to Store Information About Your Database Connection
 
 It's a good practice to create a `.env` file to store sensitive information about your project. This way, your application will become less vulnerable to malicious attacks. Each developer involved in the creation of the project should create their own `.env` file in which they will place their credentials to the database, see template below.
 
@@ -103,7 +103,7 @@ export DB_PORT=<your_db_port>
 
 Usually this file is placed in the the root folder of our project.
 
-## STEP 5: Reading Configuration Information from Environment Variable
+## Step 5: Reading Configuration Information from Environment Variable
 
 Now let's create a `config.py` file to read our database credentials. For this we are going to use a Python library called [`python-dotenv`](https://pypi.org/project/python-dotenv/), which we already added in our `requirements.txt` file. `python-dotenv` reads the key-value pair from `.env` file and adds them to the environment variable.
 
@@ -138,7 +138,7 @@ Note the connection string format returned in the method above:
 oracle+cx_oracle://user:pass@host:port/dbname[?key=value&key=value...]
 ```
 
-## STEP 6: Connecting to the Database
+## Step 6: Connecting to the Database
 
 Now that we have our Python dependencies and DBAPI installed, let’s actually build an engine to connect to a database.
 
@@ -224,112 +224,73 @@ The UoW acts as a single entry point to our persistence storage and keeps track 
 * A simple API to our persistence concerns and a handy place to get a repository[3]
 
 
-## Creating Your Query Classes
+## Step 7: Encapsulating your Queries and Service Methods
 
 Now that we set up an engine to communicate with the database we are ready to perform our query commands.
 
-Let's suppose you work for a financial institution and you are given a task to create Financial Audit Reports for a certain quarter of the year or month. These reports would provide detailed information about macroeconomic variables, mortgage rates and so on.
-
-This is an important task because in the end these reports are going to be evaluated by an Auditing company, like EY or PwC, in order to make sure that the financial records are a fair and accurate representation of the transactions your company claim to represent.
-
-The business analysts in your team usually work on these reports, many of them are already savvy about SQL commands and perform them using the Oracle SQL Developer software. But they don't want spend infinite boring hours performing repetitive queries and populating the results on excel sheets, so they ask your help to automate this process. After all, we are in the 21st century already and life is too short to repeat themselves every month or quarter. Plus, sometimes little mistakes are made here and there... damn humans. 
-
-So, basically they would provide you with the queries they usually perform to gather the report data and you would adapt them according to the variant parameters, for example, year, month, quarter. In the beginning you are going to need some meetings to understand the business logic behind all of it, but once you get it, it's piece of cake. 
-
-*src/automation/data_transfer_object/controls.py*
-```python
-from dataclasses import dataclass
-from typing import Generic, TypeVar
+Let's create a service to get information about a fictitious workflow entity present in our database:
 
 
-RequiredData = TypeVar("RequiredData")
+*src/automation/service_layer/workflows.py*
 
-
-@dataclass
-class QueryResult:
-    data: list
-    query_cmd: str
-
-
-@dataclass
-class GeneralData(Generic[RequiredData]):
-    source_per_request: dict
-    calculation_requests: QueryResult
-
-
-@dataclass
-class CalcGeneralData(GeneralData[RequiredData]):
-    economic_scenario_projections: list
-    mortgage_rates: QueryResult
-```
-
-
-
-*src/automation/data_access_layer/base_queries.py*
 ```python
 from src.automation.data_access_layer import unit_of_work
-from src.automation.data_transfer_object.controls import QueryResult
 
 
-class BaseQueries:
-    def __init__(self, uow: unit_of_work.SqlAlchemyUnitOfWork):
-        self.uow = uow
-
-    def _run_query(self, query_cmd: str) -> QueryResult:
-        with self.uow:
-            data = list(map(dict, self.uow.session.execute(query_cmd)))
-            return QueryResult(data, query_cmd)
-
-    def get_calc_request_ids(self, month: int, year: int) -> QueryResult:
-        query = """
-SELECT R.ID 
-FROM
-    X_OWNER.CALCULATION_REQUESTS R,
-    X_OWNER.CALCULATION_INPUTS I
-WHERE
-    R.M_IMPORT_DATASET_ID = I.IMPORT_DATASET_ID AND
-    TO_CHAR(R.CREATION_TIMESTAMP, 'mm-YYYY') =  '{month}-{year}' AND
-    R.DESCRIPTION IS NULL AND
-    R.STATUS NOT IN ('FAILED')
-        """.format(
-            month=str(month).zfill(2), year=year
-        )
-        results = self._run_query(query)
-        results.data = [str(r["id"]) for r in results.data]
-        return results
+def get_workflows_by_status(status: str, uow: unit_of_work.SqlAlchemyUnitOfWork):
+    with uow:
+        results = list(uow.session.execute(
+            'SELECT * FROM X_OWNER.workflows WHERE status = :status',
+            dict(status=status)
+        ))
+    return [dict(r) for r in results]
 ```
 
-## Building Up Your Services
+Which might return a list of dictionaries like this:
 
+```json
+[
+    {
+      "id": 34547,
+      "calculation_id": 9616,
+      "workflow_id": 3,
+      "status": "REFR_APPROVE"
+    },
+    {
+      "id": 34557,
+      "calculation_id": 9616,
+      "workflow_id": 4,
+      "status": "REFR_APPROVE"
+    },
+    {
+      "id": 34567,
+      "calculation_id": 9616,
+      "workflow_id": 5,
+      "status": "REFR_APPROVE"
+    },
+    ...
+```
 
-## The Main Application
+In which each key is correspondent to the column property of the entity `workflows`.
+
+## Step 8: The Main Application
 
 *src/main.py*
 
 ```python
-from datetime import datetime
+from src.automation.service_layer import get_workflows_by_status
 
-from src.automation.data_access_layer.unit_of_work import SqlAlchemyUnitOfWork
-from reports.calculation import CalculationReport
-
-
-class ReportFramework:
-    def __init__(self):
-        current_date = datetime.now()
-        self.month = current_date.month
-        self.year = current_date.year
-        self.db = SqlAlchemyUnitOfWork()
-
+class AutomationFramework:
+    def __init__(self, status):
+        self.status = status
+        
     def run(self):
-        CalculationReport(self.month, self.year, self.db).generate()
+        get_workflows_by_status(self.status)
 
 if __name__ == "__main__":
-    report = ReportFramework()
-    report.run()
+    automation = AutomationFramework("FINISHED")
+    automation.run()
 ```
-
-
-## Tricks for maintainability and reusability
 
 ## General Architecture of the System
 
@@ -337,7 +298,6 @@ The unit of work is going to be initialized in the main application, which invok
 
 ![General Architecture of the System](images/architecture_flowchart.jpg "General Architecture of the System")
 
-## Troubleshooting
 
 ## Resources
 
