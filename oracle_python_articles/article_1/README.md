@@ -92,7 +92,7 @@ Make sure you have all the necessary information to connect to your database. A 
 * Database name [optional]
 
 If you have the Oracle SQL Developer software installed in your machine you can test your connection by providing this information through a manual connection. 
-![Oracle SQL Developer](images/oracle_sql_developer.jpg "Oracle SQL Developer]")
+![Oracle SQL Developer](../images/oracle_sql_developer.jpg "Oracle SQL Developer]")
 
 If after that you are able to successfully connect to the database and see the schemas and tables you are interested in, then you are good to go to the next steps.
 
@@ -251,7 +251,7 @@ def get_workflows_by_status(status: str, uow: unit_of_work.SqlAlchemyUnitOfWork)
     with uow:
         results = list(uow.session.execute(
             'SELECT * FROM X_OWNER.workflows WHERE status = :status',
-            dict(status=status)
+            status=status
         ))
     return [dict(r) for r in results]
 ```
