@@ -2,12 +2,22 @@
 
 In this tutorial style article we are going to provide you with some steps to connect to an Oracle database in a Python application by using SQLAlchemy ORM (Object relational mapping) and the Unit of Work Design Pattern. By the end of it you will be able to perform queries using raw SQL commands.
 
-
 ## Introduction 
 
 Oracle is one of the most popular databases out there, it's used by companies like JPMorgan Chase, IBM, ABN Amro, Wells Fargo and so on. Considering this, there are good chances that one day you might bump into it in your ephemeral lifetime as a software developer. 
 
 It can be pretty daunting to have to use repetitive SQL commands to search for specific information in databases, right? For simple and quick tasks it's fine to use a software like Oracle SQL Developer to perform your queries, but if you are working on a specific application with more complicated business rules, then you might want to condense those repetitive SQL commands in a method, for example. If you are writing an application in Python which might need to query an Oracle database, follow me through the next steps to check out my approach to this.
+
+## Case Scenario
+
+Let's suppose you work for a financial institution and you are given a task to create Financial Audit Reports for a certain quarter of the year or month. These reports would provide detailed information about macroeconomic variables, mortgage rates and so on.
+
+This is an important task because in the end these reports are going to be evaluated by an Auditing company, like EY or PwC, in order to make sure that the financial records are a fair and accurate representation of the transactions your company claim to represent.
+
+The business analysts in your team usually work on these reports, many of them are already savvy about SQL commands and perform them using the Oracle SQL Developer software. But they don't want spend infinite boring hours performing repetitive queries and populating the results on excel sheets, so they ask your help to automate this process. After all, we are in the 21st century already and life is too short to repeat themselves every month or quarter. Plus, sometimes little mistakes are made here and there... damn humans. 
+
+So, basically they would provide you with the queries they usually perform to gather the report data and you would adapt them according to the variant parameters, for example, year, month, quarter, statuses of workflows etc.
+
 
 ## Why use SQLAlchemy?
 
@@ -22,7 +32,7 @@ I hope you find it interesting so far. Now let's get our hands a bit dirty.
 In this section we are going to create a virtual environment to install our dependencies. This avoids us to install our packages into a global Python environment.
 
 Create a folder for your project and in that folder use the following commands according to your operational system.
-In the example below ".env" is the name of the environment:
+In the example below ".env" is the name of the environment, feel free to name you virtual environment with whichever name you want.
 
 ```bash
 # macOS/Linux
@@ -224,11 +234,11 @@ The UoW acts as a single entry point to our persistence storage and keeps track 
 * A simple API to our persistence concerns and a handy place to get a repository[3]
 
 
-## Step 7: Encapsulating your Queries and Service Methods
+## Step 7: Encapsulating your Queries in Service Methods
 
 Now that we set up an engine to communicate with the database we are ready to perform our query commands.
 
-Let's create a service to get information about a fictitious workflow entity present in our database:
+Let's create a service to get information about a fictitious `workflow` entity present in our database:
 
 
 *src/automation/service_layer/workflows.py*
@@ -274,6 +284,8 @@ Which might return a list of dictionaries like this:
 In which each key is correspondent to the column property of the entity `workflows`.
 
 ## Step 8: The Main Application
+
+Now you can consume the small previous service method we worked on in you main application. Here we have a simple main script. But you could consume your service each way you like or needed, for example, you could use in a Django or Flask application, in your Jupyter notebook and so on.
 
 *src/main.py*
 
